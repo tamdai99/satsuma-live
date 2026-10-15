@@ -3,19 +3,20 @@ const language=location.pathname.endsWith('/zh')?'zh':'ja', zh=language==='zh';d
 const t=document.querySelector('#text'),s=document.querySelector('#state');document.querySelector('#small').onclick=()=>{size=Math.max(18,size-2);t.style.fontSize=size+'px';rebuild()};document.querySelector('#large').onclick=()=>{size=Math.min(48,size+2);t.style.fontSize=size+'px';rebuild()};
 // Freeze line breaks and glyph advances: incoming punctuation cannot reflow old text.
 let previousText='', visibleText='', line=null, lineWidth=0, layoutWidth=0;
-const measure=document.createElement('canvas').getContext('2d');
 function resetLayout(){
  t.replaceChildren();line=null;lineWidth=0;layoutWidth=Math.max(1,t.clientWidth);
- const style=getComputedStyle(t);measure.font=style.font;measure.fontKerning='none';
 }
 function newLine(){line=document.createElement('div');line.className='caption-line';line.dataset.length='0';t.append(line);lineWidth=0;}
 function appendText(value){
  for(const char of value){
   if(!line)newLine();
   if(char==='\n'){line.dataset.length=Number(line.dataset.length)+1;newLine();continue;}
-  const width=Math.max(0,measure.measureText(char).width);
-  if(lineWidth>0&&lineWidth+width>layoutWidth)newLine();
-  const glyph=document.createElement('span');glyph.className='caption-char';glyph.textContent=char;glyph.style.width=width+'px';line.append(glyph);line.dataset.length=Number(line.dataset.length)+char.length;lineWidth+=width;
+  // Use the actual rendered glyph width, including fallback fonts and browser zoom.
+  // Canvas's default 10px font can differ from the displayed font and cause overlaps.
+  const glyph=document.createElement('span');glyph.className='caption-char';glyph.textContent=char;line.append(glyph);
+  const width=glyph.getBoundingClientRect().width;
+  if(lineWidth>0&&lineWidth+width>layoutWidth){newLine();line.append(glyph);}
+  line.dataset.length=Number(line.dataset.length)+char.length;lineWidth+=width;
  }
 }
 function rebuild(){resetLayout();if(visibleText)appendText(visibleText);else t.textContent=zh?'等待字幕。':'字幕を待っています。';}
